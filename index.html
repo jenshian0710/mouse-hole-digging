@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>對稱－不只老鼠會打洞 | 互動式摺紙打洞數學實驗室</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', 'Inter', sans-serif;
+            background-color: #f8fafc;
+            user-select: none;
+        }
+        canvas {
+            touch-action: none;
+        }
+        .custom-scroll::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @keyframes pulseRing {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.4; }
+            100% { transform: scale(0.95); opacity: 0.8; }
+        }
+        .target-badge {
+            animation: pulseRing 2s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-blue-600 text-white shadow-md px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5 z-20">
+        <div class="flex items-center space-x-2.5">
+            <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-xl sm:text-2xl shadow-inner shrink-0">
+                🧀
+            </div>
+            <div>
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <h1 class="text-base sm:text-xl font-black tracking-tight">對稱－不只老鼠會打洞</h1>
+                    <span class="text-[11px] bg-amber-400 text-slate-900 font-bold px-2 py-0.5 rounded-full">八年級線對稱模組</span>
+                </div>
+                <p class="text-[11px] sm:text-xs text-indigo-100 leading-tight mt-0.5">正方形8條摺痕（4條對稱軸＋4條四邊中點連線）即時摺疊、打洞預覽與反推</p>
+            </div>
+        </div>
+
+        <!-- 3 Mode Switcher Buttons (Mobile Responsive) -->
+        <div class="grid grid-cols-3 sm:flex bg-indigo-900/40 p-1 rounded-xl backdrop-blur-sm border border-white/15 gap-1">
+            <button id="tabChallenge" onclick="switchAppMode('challenge')" class="px-2 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all bg-amber-400 text-slate-900 shadow-sm text-center">
+                🏆 破關挑戰
+            </button>
+            <button id="tabExplore" onclick="switchAppMode('explore')" class="px-2 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-white hover:bg-white/10 text-center">
+                ✂️ 自由探索
+            </button>
+            <button id="tabReverse" onclick="switchAppMode('reverse')" class="px-2 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all text-white hover:bg-white/10 text-center">
+                🔍 結果反推
+            </button>
+        </div>
+    </header>
+
+    <!-- CHALLENGE MODE TOP BAR: Level Selection & Prominent Target Pattern Display -->
+    <section id="challengeTopBar" class="bg-white border-b border-slate-200 px-4 py-3 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+            
+            <!-- Left: Level Selector Pills -->
+            <div class="flex-1">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-md bg-indigo-100 text-indigo-800">請選擇挑戰關卡</span>
+                        <span class="text-xs text-slate-500">基礎關(1-4)每關12分 ｜ 進階關(5-6)每關10分 ｜ 專家關(7-10)每關8分</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1 rounded-lg">
+                        <span class="text-xs font-bold text-amber-800">目前總積分：</span>
+                        <span id="scoreDisplay" class="text-base font-black text-amber-600">0</span>
+                        <span class="text-xs text-amber-700">/ 100 分</span>
+                    </div>
+                </div>
+                <div id="levelPillsContainer" class="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Right: Quick Level Info & Solution Controls -->
+            <div class="flex flex-wrap sm:flex-nowrap items-center gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                <div class="flex-1 min-w-[210px]">
+                    <div class="flex items-center gap-2">
+                        <span id="levelBadge" class="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800">基礎關・12分</span>
+                        <h2 id="levelTitle" class="text-sm font-black text-slate-800">第一關：2個對稱洞</h2>
+                    </div>
+                    <p id="levelDesc" class="text-xs text-slate-600 mt-1">請先把色紙摺好，再使用打洞機「打一次洞」，展開後須與目標圖示完全相同！</p>
+                </div>
+                <div class="flex flex-col gap-1.5 shrink-0">
+                    <button onclick="showLevelHint()" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1">
+                        💡 提示摺法
+                    </button>
+                    <button onclick="autoSolveCurrentLevel()" class="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1">
+                        ✨ 示範解答步驟
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- REVERSE MODE TOP BAR: Worksheet & Reverse Deduction Selector -->
+    <section id="reverseTopBar" class="hidden bg-emerald-950 text-white border-b border-emerald-800 px-4 py-3 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-emerald-400 text-emerald-950 mr-2">逆向推論工作坊</span>
+                <span class="text-sm font-bold">觀察打洞展開後的結果，反推「對稱軸（摺線）」在哪裡？或是載入學習單題目進行幾何探究！</span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button onclick="loadReversePreset('ws_part1')" class="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-bold transition border border-emerald-600">
+                    📝 學習單 Part1：已知原洞與摺線找後洞
+                </button>
+                <button onclick="loadReversePreset('ws_part2')" class="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-bold transition border border-emerald-600">
+                    📐 學習單 Part2：已知兩洞反推摺線
+                </button>
+                <button onclick="loadReversePreset('custom_deduce')" class="px-3 py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-900 text-xs font-bold transition">
+                    🔍 從十關成果反推摺法
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 md:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+        <!-- LEFT COLUMN: 8 Crease Controls & Interactive Step Tools (4 cols on desktop) -->
+        <aside class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col gap-4">
+            
+            <!-- Crease Selection Section -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center">1</span>
+                        選擇8條摺痕進行對摺
+                    </h3>
+                    <button id="toggleDirBtn" onclick="toggleFoldDirection()" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition flex items-center gap-1" title="切換要把哪一側的紙摺過去">
+                        🔄 摺向：<span id="foldDirLabel" class="text-indigo-600">正向 (預設)</span>
+                    </button>
+                </div>
+                <p class="text-xs text-slate-500 mb-2.5">可依序點擊下方任一摺痕摺紙（也可直接點擊畫布上的虛線）：</p>
+
+                <!-- Group A: 4 Symmetry Axes -->
+                <div class="mb-3">
+                    <div class="flex items-center justify-between text-xs font-bold text-indigo-700 mb-1.5 px-1">
+                        <span>🔹 正方形對稱軸（共 4 條）</span>
+                        <span class="text-[11px] text-indigo-500">對摺後完全重合</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="applyCreaseFold('v')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>① 鉛直對稱軸 (｜)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 group-hover:bg-indigo-500 text-indigo-800 group-hover:text-white">x = 0</span>
+                        </button>
+                        <button onclick="applyCreaseFold('h')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>② 水平對稱軸 (—)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 group-hover:bg-indigo-500 text-indigo-800 group-hover:text-white">y = 0</span>
+                        </button>
+                        <button onclick="applyCreaseFold('d1')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>③ 左上右下斜軸 (＼)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 group-hover:bg-indigo-500 text-indigo-800 group-hover:text-white">x = y</span>
+                        </button>
+                        <button onclick="applyCreaseFold('d2')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>④ 右上左下斜軸 (／)</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 group-hover:bg-indigo-500 text-indigo-800 group-hover:text-white">x = -y</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Group B: 4 Midpoint Connection Lines -->
+                <div>
+                    <div class="flex items-center justify-between text-xs font-bold text-emerald-700 mb-1.5 px-1">
+                        <span>🔸 四邊中點連線（共 4 條）</span>
+                        <span class="text-[11px] text-emerald-600">將四個角向中心摺入</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="applyCreaseFold('m_tl')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>⑤ 左上中點連線</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 group-hover:bg-emerald-500 text-emerald-800 group-hover:text-white">摺左上角</span>
+                        </button>
+                        <button onclick="applyCreaseFold('m_tr')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>⑥ 右上中點連線</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 group-hover:bg-emerald-500 text-emerald-800 group-hover:text-white">摺右上角</span>
+                        </button>
+                        <button onclick="applyCreaseFold('m_bl')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>⑦ 左下中點連線</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 group-hover:bg-emerald-500 text-emerald-800 group-hover:text-white">摺左下角</span>
+                        </button>
+                        <button onclick="applyCreaseFold('m_br')" class="crease-btn group flex items-center justify-between px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition">
+                            <span>⑧ 右下中點連線</span>
+                            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 group-hover:bg-emerald-500 text-emerald-800 group-hover:text-white">摺右下角</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fold History Breadcrumb & Undo/Reset -->
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <div class="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                    <span class="text-xs font-bold text-slate-700">目前摺紙步驟（已摺 <span id="foldCountBadge" class="text-indigo-600 font-black">0</span> 次）：</span>
+                    <div class="flex flex-wrap gap-1">
+                        <button onclick="flipLastFoldDirection()" id="flipLastFoldBtn" class="px-2 py-1 rounded bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold disabled:opacity-40 transition" title="將最後一次摺紙改往另一側對摺">
+                            ⇄ 翻轉上一步摺向
+                        </button>
+                        <button onclick="undoLastFold()" id="undoFoldBtn" class="px-2 py-1 rounded bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-bold disabled:opacity-40 transition">
+                            ↩ 退回
+                        </button>
+                        <button onclick="resetPaperState()" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition">
+                            🗑️ 重設
+                        </button>
+                    </div>
+                </div>
+                <div id="foldHistoryList" class="text-xs text-slate-500 flex flex-wrap gap-1 min-h-[24px] items-center">
+                    <span>尚未摺紙（平坦正方形色紙，共 1 層）</span>
+                </div>
+            </div>
+
+            <!-- Step 2: Hole Punching Settings -->
+            <div class="border-t border-slate-200 pt-3">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                        <span class="w-5 h-5 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center">2</span>
+                        在摺好的色紙上打洞
+                    </h3>
+                    <span id="singlePunchBadge" class="text-[11px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">規則：只打一次洞</span>
+                </div>
+                <p class="text-xs text-slate-600 mb-2">
+                    直接點擊中間的「摺紙與打洞操作區」色紙即可打洞，右側會**即時同步預覽展開後的孔洞分佈**！
+                    <span class="text-indigo-600 font-semibold">（提示：若打在摺線上，兩個半圓展開會合成1個圓，可打出奇數個洞！）</span>
+                </p>
+
+                <!-- Visual Aids Checkboxes -->
+                <div class="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-xs">
+                    <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
+                        <input type="checkbox" id="chkShowTargetOverlay" checked onchange="renderAllCanvases()" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>在展開預覽區顯示「半透明紅圈目標提示」</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
+                        <input type="checkbox" id="chkShowSymmetryLines" checked onchange="renderAllCanvases()" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>顯示「對稱點連線」與「垂直平分摺線」幾何關係</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
+                        <input type="checkbox" id="chkSnapToGrid" checked onchange="renderAllCanvases()" class="rounded text-indigo-600 focus:ring-indigo-500">
+                        <span>智慧吸附摺線與關鍵對稱位置（精準打洞輔助）</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Challenge Worksheet Question Box (Only in Challenge Mode) -->
+            <div id="worksheetQuestionBox" class="bg-indigo-50/80 rounded-xl p-3 border border-indigo-200">
+                <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-xs font-extrabold text-indigo-900">📋 活動單問題紀錄</span>
+                    <span id="levelStatusTag" class="text-xs font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">尚未過關</span>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-slate-700 mb-2">
+                    <span>本關我們**最少**需要摺幾次？</span>
+                    <input type="number" id="minFoldAnswerInput" min="1" max="8" placeholder="?" class="w-14 px-2 py-1 text-center font-bold border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <span>次</span>
+                </div>
+                <div id="feedbackBanner" class="text-xs font-bold p-2 rounded-lg bg-white border border-indigo-100 text-slate-600">
+                    請先觀察中間上方的「本關目標圖示」，完成摺紙後點擊色紙打洞！
+                </div>
+            </div>
+        </aside>
+
+        <!-- RIGHT AREA: Interactive Canvases (8 cols on desktop) -->
+        <section class="lg:col-span-8 flex flex-col gap-4">
+
+            <!-- PROMINENT TARGET PATTERN CARD (Visible in Challenge Mode so user ALWAYS sees the problem!) -->
+            <div id="targetCardContainer" class="bg-gradient-to-r from-amber-50 via-orange-50 to-rose-50 rounded-2xl p-3.5 border-2 border-amber-300 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+                <div class="relative shrink-0 bg-white p-2 rounded-xl shadow border-2 border-amber-400">
+                    <div class="text-[11px] font-black text-center text-amber-900 bg-amber-200 rounded px-2 py-0.5 mb-1">
+                        🎯 本關目標圖示 (題目)
+                    </div>
+                    <canvas id="targetCanvas" width="160" height="160" class="w-[140px] h-[140px] sm:w-[155px] sm:h-[155px] block"></canvas>
+                </div>
+
+                <div class="flex-1 space-y-2 text-center sm:text-left">
+                    <div class="inline-flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-amber-300 shadow-sm">
+                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500 target-badge"></span>
+                        <span id="targetCardTitle" class="text-sm font-black text-slate-800">第一關(基礎) 圖示：有 2 個洞</span>
+                    </div>
+                    <p id="targetCardHint" class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        請看左側的<strong>「本關目標圖示」</strong>，色紙展開後必須呈現這 <strong>2 個洞</strong>的位置。在下方「展开即時預覽區」中也已為您標示出<span class="text-rose-600 font-bold">紅色虛線目標圈</span>供對照！
+                    </p>
+                    <div class="flex flex-wrap justify-center sm:justify-start gap-2 pt-1">
+                        <span class="text-xs bg-white/90 border border-slate-200 px-2.5 py-1 rounded-lg font-bold text-slate-700">
+                            🎯 目標總洞數：<strong id="targetHoleCountNum" class="text-rose-600">2</strong> 個洞
+                        </span>
+                        <span class="text-xs bg-white/90 border border-slate-200 px-2.5 py-1 rounded-lg font-bold text-slate-700">
+                            📏 參考最少摺疊：<strong id="targetMinFoldsNum" class="text-indigo-600">1</strong> 次
+                        </span>
+                        <span class="text-xs bg-white/90 border border-slate-200 px-2.5 py-1 rounded-lg font-bold text-slate-700">
+                            🕳️ 您目前已打出：<strong id="currentHoleCountNum" class="text-emerald-600">0</strong> 個洞
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dual Synchronized Interactive Canvases: Folded Workspace + Real-Time Unfolded Preview -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <!-- Canvas 1: Folded Paper & Hole Punching Workspace -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3.5 flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between mb-2">
+                        <div>
+                            <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                                <span>✂️ 摺紙與打洞操作區</span>
+                            </h3>
+                            <p class="text-[11px] text-slate-500">點擊色紙即可打洞（游標移動可即時預覽）</p>
+                        </div>
+                        <span id="layerCountIndicator" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900">
+                            目前最高疊合：1 層
+                        </span>
+                    </div>
+
+                    <div class="relative w-full max-w-[360px] aspect-square bg-slate-100 rounded-xl border border-slate-300 overflow-hidden shadow-inner">
+                        <canvas id="foldedCanvas" width="440" height="440" class="w-full h-full cursor-crosshair block"></canvas>
+                    </div>
+
+                    <div class="w-full mt-2.5 flex items-center justify-between text-[11px] text-slate-500 px-1">
+                        <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-indigo-500 inline-block"></span> 藍色：4條對稱軸</span>
+                        <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-emerald-500 inline-block"></span> 綠色：4條中點連線</span>
+                    </div>
+                </div>
+
+                <!-- Canvas 2: Real-time Unfolded Result & Symmetry Analysis -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-3.5 flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between mb-2">
+                        <div>
+                            <h3 class="text-sm font-black text-slate-800 flex items-center gap-1.5">
+                                <span>✨ 色紙展開即時預覽區</span>
+                            </h3>
+                            <p class="text-[11px] text-slate-500">自動展開顯示所有對稱洞口與摺痕</p>
+                        </div>
+                        <span id="matchStatusBadge" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600">
+                            等待打洞...
+                        </span>
+                    </div>
+
+                    <div class="relative w-full max-w-[360px] aspect-square bg-slate-100 rounded-xl border border-slate-300 overflow-hidden shadow-inner">
+                        <canvas id="unfoldedCanvas" width="440" height="440" class="w-full h-full block"></canvas>
+                    </div>
+
+                    <div class="w-full mt-2.5 flex items-center justify-between text-[11px] text-slate-500 px-1">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full border-2 border-rose-500 border-dashed inline-block"></span> 紅虛線圈：題目目標位置</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-800 inline-block"></span> 實心圓洞：實際打出結果</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reverse Deduction & Worksheet Interactive Panel (Shown in Reverse Mode or expandable) -->
+            <div id="reverseInteractiveBox" class="hidden bg-white rounded-2xl shadow-sm border-2 border-emerald-500 p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div>
+                        <h3 id="reverseBoxTitle" class="text-base font-black text-emerald-950">🔍 結果反推與學習單探究區</h3>
+                        <p id="reverseBoxSubtitle" class="text-xs text-slate-600">點擊右側「展開即時預覽區」畫布可互動驗證，或點擊下方按鈕自動推論摺紙步驟！</p>
+                    </div>
+                    <div id="reverseActionBtns" class="flex flex-wrap gap-2">
+                        <!-- Dynamic buttons injected by JS -->
+                    </div>
+                </div>
+                <div id="reverseExplanationText" class="text-xs sm:text-sm bg-emerald-50 text-emerald-950 p-3 rounded-xl border border-emerald-200 leading-relaxed">
+                    請從上方選擇一個學習單活動或反推任務。
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Level Complete Celebration Modal -->
+    <div id="celebrationModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 text-center border border-slate-100">
+            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-4xl shadow-inner">
+                🎉
+            </div>
+            <h2 id="modalTitle" class="text-2xl font-black text-slate-800 mb-1">闖關成功！</h2>
+            <p id="modalSubtitle" class="text-sm text-slate-600 mb-4">你精準掌握了線對稱的摺紙與打洞規律！</p>
+            
+            <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200 text-left text-xs space-y-1.5 mb-5">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">本關目標洞數：</span>
+                    <span id="modalHoleCount" class="font-bold text-slate-800">4 個洞</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">你的摺紙次數 / 最少摺紙次數：</span>
+                    <span id="modalFoldCompare" class="font-bold text-indigo-600">2 次 / 最少 2 次</span>
+                </div>
+                <div class="pt-1 border-t border-slate-200 text-slate-700" id="modalMathInsight">
+                    💡 數學概念：對稱軸就是摺線，兩對稱點連線必被摺線垂直平分！
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="closeCelebrationModal()" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition">
+                    留在原關觀察
+                </button>
+                <button onclick="goToNextLevel()" class="flex-1 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition">
+                    挑戰下一關 ➔
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * ============================================================================
+ * 1. MATHEMATICAL ENGINE: 8 CREASES, MULTI-LAYER POLYGON FOLDING & REFLECTION
+ * ============================================================================
+ * Normalized paper coordinates: [-1, 1] x [-1, 1].
+ * Center of square is (0, 0). Top-left is (-1, -1), Bottom-right is (1, 1).
+ */
+
+const CREASES = {
+    // 4 Symmetry Axes (對稱軸)
+    'v':  { id: 'v',  name: '① 鉛直對稱軸 (｜)', short: '鉛直軸', type: 'axis', a: 1, b: 0, c: 0, p1: {x:0, y:-1}, p2: {x:0, y:1} },
+    'h':  { id: 'h',  name: '② 水平對稱軸 (—)', short: '水平軸', type: 'axis', a: 0, b: 1, c: 0, p1: {x:-1, y:0}, p2: {x:1, y:0} },
+    'd1': { id: 'd1', name: '③ 左上右下斜軸 (＼)', short: '主對角線', type: 'axis', a: 1, b: -1, c: 0, p1: {x:-1, y:-1}, p2: {x:1, y:1} },
+    'd2': { id: 'd2', name: '④ 右上左下斜軸 (／)', short: '副對角線', type: 'axis', a: 1, b: 1, c: 0, p1: {x:1, y:-1}, p2: {x:-1, y:1} },
+
+    // 4 Midpoint-to-Midpoint Lines (四邊中點連線)
+    // m_tl connects (0, -1) and (-1, 0) -> x + y + 1 = 0. Default keeps x + y + 1 >= 0 (folds top-left corner inward)
+    'm_tl': { id: 'm_tl', name: '⑤ 左上中點連線', short: '左上中點線', type: 'mid', a: -1, b: -1, c: -1, p1: {x:0, y:-1}, p2: {x:-1, y:0} },
+    // m_tr connects (0, -1) and (1, 0) -> x - y - 1 = 0. Default keeps x - y - 1 <= 0 (folds top-right corner inward)
+    'm_tr': { id: 'm_tr', name: '⑥ 右上中點連線', short: '右上中點線', type: 'mid', a: 1, b: -1, c: -1, p1: {x:0, y:-1}, p2: {x:1, y:0} },
+    // m_bl connects (-1, 0) and (0, 1) -> -x + y - 1 = 0. Default keeps -x + y - 1 <= 0 (folds bottom-left corner inward)
+    'm_bl': { id: 'm_bl', name: '⑦ 左下中點連線', short: '左下中點線', type: 'mid', a: -1, b: 1, c: -1, p1: {x:-1, y:0}, p2: {x:0, y:1} },
+    // m_br connects (1, 0) and (0, 1) -> x + y - 1 = 0. Default keeps x + y - 1 <= 0 (folds bottom-right corner inward)
+    'm_br': { id: 'm_br', name: '⑧ 右下中點連線', short: '右下中點線', type: 'mid', a: 1, b: 1, c: -1, p1: {x:1, y:0}, p2: {x:0, y:1} }
+};
+
+const EPS = 1e-6;
+
+// Evaluate signed value of line a*x + b*y + c
+function evalLine(p, line) {
+    return line.a * p.x + line.b * p.y + line.c;
+}
+
+// Euclidean distance from point p to line ax + by + c = 0
+function pointToLineDist(p, line) {
+    return Math.abs(evalLine(p, line)) / Math.hypot(line.a, line.b);
+}
+
+// Reflect point p across line ax + by + c = 0
+function reflectPoint(p, line) {
+    const d = evalLine(p, line) / (line.a * line.a + line.b * line.b);
+    return {
+        x: p.x - 2 * line.a * d,
+        y: p.y - 2 * line.b * d
+    };
+}
+
+// Clip a convex polygon against half-plane: sign * (a*x + b*y + c) <= 0
+function clipConvexPolygon(poly, line, keepSign) {
+    if (!poly || poly.length < 3) return [];
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+        const cur = poly[i];
+        const next = poly[(i + 1) % poly.length];
+        const vCur = keepSign * evalLine(cur, line);
+        const vNext = keepSign * evalLine(next, line);
+
+        const curIn = vCur <= EPS;
+        const nextIn = vNext <= EPS;
+
+        if (curIn) {
+            out.push(cur);
+        }
+        if ((vCur < -EPS && vNext > EPS) || (vCur > EPS && vNext < -EPS)) {
+            const t = vCur / (vCur - vNext);
+            out.push({
+                x: cur.x + t * (next.x - cur.x),
+                y: cur.y + t * (next.y - cur.y)
+            });
+        }
+    }
+    return cleanPolygon(out);
+}
+
+// Remove duplicate vertices and check non-degenerate area
+function cleanPolygon(poly) {
+    if (poly.length < 3) return [];
+    const cleaned = [];
+    for (let i = 0; i < poly.length; i++) {
+        const p = poly[i];
+        const prev = cleaned[cleaned.length - 1];
+        if (!prev || Math.hypot(p.x - prev.x, p.y - prev.y) > 1e-5) {
+            cleaned.push(p);
+        }
+    }
+    if (cleaned.length >= 2 && Math.hypot(cleaned[0].x - cleaned[cleaned.length - 1].x, cleaned[0].y - cleaned[cleaned.length - 1].y) <= 1e-5) {
+        cleaned.pop();
+    }
+    if (computePolyArea(cleaned) < 1e-4) return [];
+    return cleaned;
+}
+
+function computePolyArea(poly) {
+    if (poly.length < 3) return 0;
+    let area = 0;
+    for (let i = 0; i < poly.length; i++) {
+        const j = (i + 1) % poly.length;
+        area += poly[i].x * poly[j].y - poly[j].x * poly[i].y;
+    }
+    return Math.abs(area) * 0.5;
+}
+
+// Point in convex/simple polygon test (with boundary tolerance so punching on crease works reliably!)
+function isPointInOrNearPolygon(pt, poly, boundaryTol = 0.03) {
+    if (!poly || poly.length < 3) return false;
+    // Standard ray-casting
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const xi = poly[i].x, yi = poly[i].y;
+        const xj = poly[j].x, yj = poly[j].y;
+        const intersect = ((yi > pt.y) !== (yj > pt.y)) &&
+            (pt.x < (xj - xi) * (pt.y - yi) / (yj - yi + 1e-12) + xi);
+        if (intersect) inside = !inside;
+    }
+    if (inside) return true;
+
+    // Check distance to polygon edges for crease punches
+    for (let i = 0; i < poly.length; i++) {
+        const a = poly[i];
+        const b = poly[(i + 1) % poly.length];
+        if (distToSegment(pt, a, b) <= boundaryTol) return true;
+    }
+    return false;
+}
+
+function distToSegment(p, v, w) {
+    const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+    if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+}
+
+/**
+ * Multi-Layer Paper Folding Simulator:
+ * Starts with 1 layer covering [-1,1]x[-1,1], with empty reflection history `reflections: []`.
+ * When folding along `line` with `keepSign` (+1 or -1):
+ * Each existing layer polygon is split by `line`:
+ *  - The portion where `keepSign * evalLine(p, line) <= 0` stays in place.
+ *  - The portion where `keepSign * evalLine(p, line) >= 0` is reflected across `line` and appended `line` to its `reflections` list!
+ */
+function buildFoldedLayers(foldSteps) {
+    let layers = [{
+        poly: [ {x:-1, y:-1}, {x:1, y:-1}, {x:1, y:1}, {x:-1, y:1} ],
+        reflections: []
+    }];
+
+    for (const step of foldSteps) {
+        const line = CREASES[step.creaseId];
+        const sign = step.dirSign || 1;
+        const nextLayers = [];
+
+        for (const layer of layers) {
+            const stayedPoly = clipConvexPolygon(layer.poly, line, sign);
+            const foldedPoly = clipConvexPolygon(layer.poly, line, -sign);
+
+            if (stayedPoly.length >= 3) {
+                nextLayers.push({
+                    poly: stayedPoly,
+                    reflections: [...layer.reflections]
+                });
+            }
+            if (foldedPoly.length >= 3) {
+                const reflectedVerts = foldedPoly.map(pt => reflectPoint(pt, line)).reverse();
+                nextLayers.push({
+                    poly: reflectedVerts,
+                    reflections: [...layer.reflections, line]
+                });
+            }
+        }
+        layers = nextLayers;
+    }
+    return layers;
+}
+
+/**
+ * Given a punch point (px, py) in the folded workspace and current layers,
+ * project the punch back through each covering layer's reflection history in reverse order,
+ * and merge holes that fall within `mergeRadius` (handling punches on crease lines!).
+ */
+function computeUnfoldedHolesFromPunch(punchPt, layers, mergeRadius = 0.085) {
+    if (!punchPt) return [];
+    const rawHoles = [];
+
+    for (const layer of layers) {
+        if (isPointInOrNearPolygon(punchPt, layer.poly, 0.032)) {
+            let pt = { x: punchPt.x, y: punchPt.y };
+            for (let i = layer.reflections.length - 1; i >= 0; i--) {
+                pt = reflectPoint(pt, layer.reflections[i]);
+            }
+            // Clamp slightly inside square if near boundary
+            if (Math.abs(pt.x) <= 1.02 && Math.abs(pt.y) <= 1.02) {
+                rawHoles.push({
+                    x: Math.max(-0.98, Math.min(0.98, pt.x)),
+                    y: Math.max(-0.98, Math.min(0.98, pt.y)),
+                    sourceReflections: layer.reflections.length
+                });
+            }
+        }
+    }
+
+    // Merge overlapping holes (e.g., when punching right on a fold crease, two half-circles merge into 1 hole)
+    const merged = [];
+    for (const h of rawHoles) {
+        let existing = merged.find(m => Math.hypot(m.x - h.x, m.y - h.y) < mergeRadius);
+        if (existing) {
+            existing.x = (existing.x * existing.weight + h.x) / (existing.weight + 1);
+            existing.y = (existing.y * existing.weight + h.y) / (existing.weight + 1);
+            existing.weight += 1;
+        } else {
+            merged.push({ x: h.x, y: h.y, weight: 1 });
+        }
+    }
+    return merged;
+}
+
+/**
+ * Helper to generate exact target hole coordinates from a recipe of folds & punch
+ * Guarantees 100% mathematical consistency between level targets and student folding!
+ */
+function generatePatternFromRecipe(foldSteps, punchPt) {
+    const layers = buildFoldedLayers(foldSteps);
+    return computeUnfoldedHolesFromPunch(punchPt, layers);
+}
+
+/**
+ * ============================================================================
+ * 2. ALL 10 CHALLENGE LEVELS FROM THE LESSON PLAN ("不只老鼠會打洞")
+ * ============================================================================
+ * Every recipe has been mathematically verified against `buildFoldedLayers` so
+ * that `recipePunch` lies strictly inside the surviving multi-layer region (or
+ * on the exact target fold edge for Level 7), producing the exact hole counts:
+ * L1: 2, L2: 4, L3: 4, L4: 4, L5: 8, L6: 8, L7: 3, L8: 6, L9: 5, L10: 12.
+ */
+const R_OCT = 0.62;
+const OCT_X = Number((-R_OCT * Math.cos(Math.PI / 8)).toFixed(4)); // -0.5728 (strictly inside -1 <= x <= y <= 0)
+const OCT_Y = Number((-R_OCT * Math.sin(Math.PI / 8)).toFixed(4)); // -0.2373
+
+const CHALLENGE_LEVELS = [
+    {
+        level: 1,
+        tier: '基礎關',
+        points: 12,
+        title: '第一關 (基礎)：對角2個洞',
+        minFolds: 1,
+        recipeFolds: [{ creaseId: 'd1', dirSign: 1 }],
+        recipePunch: { x: -0.52, y: 0.32 },
+        hint: '只需要沿著「③ 左上右下斜軸 (＼)」對摺 1 次，再於左下三角形內部 (-0.52, 0.32) 打 1 個洞即可！',
+        insight: '對摺 1 次產生 1 條對稱軸，打 1 個洞會穿透 2 層色紙，展開後形成關於對角線對稱的 2 個洞。'
+    },
+    {
+        level: 2,
+        tier: '基礎關',
+        points: 12,
+        title: '第二關 (基礎)：四角落4個洞',
+        minFolds: 2,
+        recipeFolds: [{ creaseId: 'v', dirSign: 1 }, { creaseId: 'h', dirSign: 1 }],
+        recipePunch: { x: -0.58, y: -0.58 },
+        hint: '先摺「① 鉛直對稱軸」，再摺「② 水平對稱軸」（共摺 2 次變成左上 4 層小正方形），在左上角附近 (-0.58, -0.58) 打洞！',
+        insight: '互相垂直的兩次對摺會將色紙分為 4 層，打 1 次洞可同時在四個角落產生對稱的 4 個洞。'
+    },
+    {
+        level: 3,
+        tier: '基礎關',
+        points: 12,
+        title: '第三關 (基礎)：菱形4個洞',
+        minFolds: 2,
+        recipeFolds: [{ creaseId: 'd1', dirSign: 1 }, { creaseId: 'd2', dirSign: 1 }],
+        recipePunch: { x: -0.58, y: 0 },
+        hint: '觀察洞口位於上下左右四邊中點附近！先摺「③ 左上右下斜軸」，再摺「④ 右上左下斜軸」（兩條對角線對摺 2 次疊成左方三角形），再於水平中線 (-0.58, 0) 打洞。',
+        insight: '利用兩條對角線對摺 2 次後，也能疊出 4 層三角形，讓打出的 4 個洞落在上下左右十字軸線上！'
+    },
+    {
+        level: 4,
+        tier: '基礎關',
+        points: 12,
+        title: '第四關 (基礎)：近中心4個洞',
+        minFolds: 2,
+        recipeFolds: [{ creaseId: 'v', dirSign: 1 }, { creaseId: 'h', dirSign: 1 }],
+        recipePunch: { x: -0.26, y: -0.52 },
+        hint: '與第二關一樣摺「① 鉛直軸」與「② 水平軸」共 2 次，但請注意打洞位置 (-0.26, -0.52) 要「靠近鉛直摺線、遠離水平摺線」！',
+        insight: '原洞到對稱軸（摺線）的距離，決定了展開後兩個對稱洞彼此的寬窄距離！'
+    },
+    {
+        level: 5,
+        tier: '進階關',
+        points: 10,
+        title: '第五關 (進階)：成對8個洞',
+        minFolds: 3,
+        recipeFolds: [{ creaseId: 'v', dirSign: 1 }, { creaseId: 'h', dirSign: 1 }, { creaseId: 'd1', dirSign: 1 }],
+        recipePunch: { x: -0.64, y: -0.16 },
+        hint: '需要 8 個洞代表要疊出 8 層！請依序摺「① 鉛直軸 ➔ ② 水平軸 ➔ ③ 左上右下斜軸」共 3 次，並於左下半直角三角形靠近水平線處 (-0.64, -0.16) 打洞。',
+        insight: '對摺 3 次（2³ = 8 層）可一次打出 8 個洞。當打洞位置偏向某一條摺線時，8 個洞會呈現兩兩成對聚攏。'
+    },
+    {
+        level: 6,
+        tier: '進階關',
+        points: 10,
+        title: '第六關 (進階)：正八邊形8個洞',
+        minFolds: 3,
+        recipeFolds: [{ creaseId: 'v', dirSign: 1 }, { creaseId: 'h', dirSign: 1 }, { creaseId: 'd1', dirSign: 1 }],
+        recipePunch: { x: OCT_X, y: OCT_Y },
+        hint: '比較第五關與第六關：同樣依序摺「① 鉛直軸 ➔ ② 水平軸 ➔ ③ 左上右下斜軸」3 次，但這次要把洞打在三角形夾角的「角平分線」(-0.57, -0.24) 上！',
+        insight: '學習札記 Q2 重點：要讓 8 個洞均勻排成正八邊形，打洞點到兩條相鄰摺線（水平軸與對角線）的垂直距離必須相等！'
+    },
+    {
+        level: 7,
+        tier: '專家關',
+        points: 8,
+        title: '第七關 (專家)：奇數3個洞！',
+        minFolds: 2,
+        recipeFolds: [{ creaseId: 'v', dirSign: 1 }, { creaseId: 'd2', dirSign: 1 }],
+        recipePunch: { x: -0.52, y: 0 },
+        hint: '如何打出「奇數(3個)」洞？先摺「① 鉛直對稱軸」，再摺「④ 右上左下斜軸」（將上半部的鉛直摺線折到負 x 軸上），然後直接打在水平線 (-0.52, 0) 的摺線邊緣上！',
+        insight: '學習札記 Q3 突破點：折下來的 2 層剛好在第一次的鉛直摺線上（兩個半圓合成 1 個洞），加上底下 2 層內部的 2 個洞，合計 2 + 1 = 3 個洞！'
+    },
+    {
+        level: 8,
+        tier: '專家關',
+        points: 8,
+        title: '第八關 (專家)：6個洞挑戰',
+        minFolds: 3,
+        recipeFolds: [{ creaseId: 'v', dirSign: 1 }, { creaseId: 'm_tl', dirSign: 1 }, { creaseId: 'h', dirSign: 1 }],
+        recipePunch: { x: -0.30, y: -0.30 },
+        hint: '結合「對稱軸」與「四邊中點連線」！依序摺：① 鉛直軸（左半2層）➔ ⑤ 左上中點連線（左上角2層往內折疊成4層）➔ ② 水平軸（下方2層往上折疊成 6 層），再打在 (-0.30, -0.30)！',
+        insight: '先對摺鉛直軸讓左半變 2 層，再把左上角往內摺（+2層），最後將下半部 2 層折上來，就能在左上區疊出 6 層打出 6 個洞！'
+    },
+    {
+        level: 9,
+        tier: '專家關',
+        points: 8,
+        title: '第九關 (專家)：奇數5個洞！',
+        minFolds: 3,
+        recipeFolds: [{ creaseId: 'm_tl', dirSign: 1 }, { creaseId: 'v', dirSign: 1 }, { creaseId: 'h', dirSign: 1 }],
+        recipePunch: { x: -0.30, y: -0.30 },
+        hint: '與第八關對比順序！這次先摺「⑤ 左上中點連線」（只把1層左上角往內折），接著再摺「① 鉛直軸」與「② 水平軸」（把四個象限疊在一起，共 2+1+1+1 = 5 層），打在 (-0.30, -0.30)！',
+        insight: '超酷發現：第八關與第九關用的都是相同的 3 條摺線，只因為「先摺中點連線」只折了 1 個角（多 1 層），展開就變成奇數 5 個洞！'
+    },
+    {
+        level: 10,
+        tier: '專家關',
+        points: 8,
+        title: '第十關 (專家)：終極12個洞',
+        minFolds: 4,
+        recipeFolds: [
+            { creaseId: 'v', dirSign: 1 },
+            { creaseId: 'm_tl', dirSign: 1 },
+            { creaseId: 'h', dirSign: 1 },
+            { creaseId: 'd1', dirSign: 1 }
+        ],
+        recipePunch: { x: -0.44, y: -0.18 },
+        hint: '終極魔王關！延續第八關的 6 層摺法：① 鉛直軸 ➔ ⑤ 左上中點連線 ➔ ② 水平軸（此時左上三角形為 6 層），第 4 步再沿「③ 左上右下斜軸」對摺（6 × 2 = 12 層），打在 (-0.44, -0.18)！',
+        insight: '恭喜完成全部十關！在第八關 6 層等腰直角三角形的基礎上，沿著它的對稱軸（左上右下斜軸）再對摺一次，層數直接翻倍為 12 層，一舉打出 12 個洞！'
+    }
+];
+
+// Precompute target holes for all 10 levels using the exact mathematical engine
+CHALLENGE_LEVELS.forEach(lv => {
+    lv.targetHoles = generatePatternFromRecipe(lv.recipeFolds, lv.recipePunch);
+});
+
+/**
+ * ============================================================================
+ * 3. APPLICATION STATE & MODE MANAGEMENT
+ * ============================================================================
+ */
+const state = {
+    mode: 'challenge', // 'challenge' | 'explore' | 'reverse'
+    currentLevelIdx: 0,
+    completedLevels: new Set(),
+    foldDirectionSign: 1, // +1 (default direction) or -1 (opposite side folded)
+    foldSteps: [], // [{ creaseId, dirSign }]
+    layers: [],
+    punchPt: null, // { x, y } in [-1, 1]
+    hoverPt: null, // { x, y } in [-1, 1]
+    unfoldedHoles: [],
+
+    // Reverse / Worksheet sub-mode state
+    reverseSubMode: 'ws_part1', // 'ws_part1' | 'ws_part2' | 'custom_deduce'
+    wsIndex: 0,
+    userGuessedPoint: null,
+    userSelectedCreaseId: null,
+    deducedSolutionText: ''
+};
+
+// Worksheet Part 1 & Part 2 problems from PDF pages 7 & 8
+const WORKSHEET_PART1 = [
+    { title: '學習單 Part1 - 圖一：沿水平虛線對摺', creaseId: 'h', origHole: { x: -0.45, y: -0.5 }, question: '原洞在左上方 (-0.45, -0.5)，若沿「水平對稱軸 (—)」對摺打洞，展開後另一個洞（後洞）會在哪裡？請直接點擊右側「展開即時預覽區」畫出後洞！' },
+    { title: '學習單 Part1 - 圖二：沿鉛直虛線對摺', creaseId: 'v', origHole: { x: -0.45, y: -0.5 }, question: '原洞位置不變 (-0.45, -0.5)，但改沿「鉛直對稱軸 (｜)」對摺打洞，展開後另一個洞（後洞）會在哪裡？請點擊右側畫布作答！' },
+    { title: '學習單 Part1 - 圖三：沿右上左下斜線對摺', creaseId: 'd2', origHole: { x: -0.45, y: -0.5 }, question: '原洞位置一樣 (-0.45, -0.5)，改沿「④ 右上左下斜軸 (／)」對摺打洞，後洞會在哪裡？請點擊右側畫布！' },
+    { title: '學習單 Part1 - 圖四：沿左上右下斜線對摺', creaseId: 'd1', origHole: { x: -0.45, y: -0.5 }, question: '原洞位置一樣 (-0.45, -0.5)，改沿「③ 左上右下斜軸 (＼)」對摺打洞，後洞會在哪裡？體會看看：原洞相同，摺線不同，後洞位置會一樣嗎？' }
+];
+
+const WORKSHEET_PART2 = [
+    { title: '學習單 Part2 - 圖五：已知兩洞找摺線', creaseId: 'v', holeA: { x: -0.55, y: -0.35 }, holeB: { x: 0.55, y: -0.35 }, question: '圖上已經有展開後的兩個洞，請問當初是沿著哪一條摺線對摺的？請從左側點擊正確的摺痕按鈕，觀察兩洞連線與摺線的關係！' },
+    { title: '學習單 Part2 - 圖六：已知兩洞找摺線', creaseId: 'h', holeA: { x: 0.4, y: -0.6 }, holeB: { x: 0.4, y: 0.6 }, question: '觀察上下對稱的兩個洞，請問摺線（對稱軸）是哪一條？點擊左側摺痕按鈕驗證！' },
+    { title: '學習單 Part2 - 圖七：已知斜向兩洞找摺線', creaseId: 'd1', holeA: { x: -0.6, y: 0.2 }, holeB: { x: 0.2, y: -0.6 }, question: '當兩洞呈現斜向對稱時，連接兩洞的線段會被哪一條摺線「垂直平分」？請點擊左側摺痕按鈕！' },
+    { title: '學習單 Part2 - 圖八：已知中點連線對稱兩洞', creaseId: 'm_tl', holeA: { x: -0.75, y: -0.75 }, holeB: { x: -0.25, y: -0.25 }, question: '進階思考：這兩個洞並不是以正方形中心對稱，而是沿著哪一條「四邊中點連線」對摺產生的？請點擊左側摺痕按鈕！' }
+];
+
+/**
+ * ============================================================================
+ * 4. UI INITIALIZATION & LEVEL BAR
+ * ============================================================================
+ */
+function initApp() {
+    renderLevelPills();
+    loadChallengeLevel(0);
+    setupCanvasListeners();
+}
+
+function switchAppMode(newMode) {
+    state.mode = newMode;
+
+    // Update top tab styles
+    const tabs = {
+        challenge: document.getElementById('tabChallenge'),
+        explore: document.getElementById('tabExplore'),
+        reverse: document.getElementById('tabReverse')
+    };
+    Object.keys(tabs).forEach(k => {
+        if (k === newMode) {
+            tabs[k].className = 'px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all bg-amber-400 text-slate-900 shadow-sm';
+        } else {
+            tabs[k].className = 'px-3.5 py-1.5 rounded-lg text-sm font-bold transition-all text-white hover:bg-white/10';
+        }
+    });
+
+    // Show/hide mode-specific sections
+    document.getElementById('challengeTopBar').classList.toggle('hidden', newMode !== 'challenge');
+    document.getElementById('targetCardContainer').classList.toggle('hidden', newMode !== 'challenge');
+    document.getElementById('worksheetQuestionBox').classList.toggle('hidden', newMode !== 'challenge');
+    document.getElementById('reverseTopBar').classList.toggle('hidden', newMode !== 'reverse');
+    document.getElementById('reverseInteractiveBox').classList.toggle('hidden', newMode !== 'reverse');
+
+    if (newMode === 'challenge') {
+        loadChallengeLevel(state.currentLevelIdx);
+    } else if (newMode === 'explore') {
+        resetPaperState();
+    } else if (newMode === 'reverse') {
+        loadReversePreset('ws_part1');
+    }
+}
+
+function renderLevelPills() {
+    const container = document.getElementById('levelPillsContainer');
+    container.innerHTML = '';
+
+    CHALLENGE_LEVELS.forEach((lv, idx) => {
+        const isCurrent = idx === state.currentLevelIdx;
+        const isDone = state.completedLevels.has(lv.level);
+        const btn = document.createElement('button');
+        btn.onclick = () => loadChallengeLevel(idx);
+
+        let colorClass = 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300';
+        if (isCurrent) {
+            colorClass = 'bg-indigo-600 text-white border-indigo-700 ring-2 ring-indigo-300 shadow-sm';
+        } else if (isDone) {
+            colorClass = 'bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border-emerald-400';
+        }
+
+        btn.className = `py-1.5 px-1 rounded-lg border text-xs font-bold transition flex flex-col items-center justify-center ${colorClass}`;
+        btn.innerHTML = `
+            <span>第${lv.level}關 ${isDone ? '✓' : ''}</span>
+            <span class="text-[10px] opacity-80">${lv.targetHoles.length}洞</span>
+        `;
+        container.appendChild(btn);
+    });
+
+    // Calculate score
+    let totalScore = 0;
+    CHALLENGE_LEVELS.forEach(lv => {
+        if (state.completedLevels.has(lv.level)) totalScore += lv.points;
+    });
+    document.getElementById('scoreDisplay').textContent = totalScore;
+}
+
+function loadChallengeLevel(idx) {
+    state.currentLevelIdx = idx;
+    const lv = CHALLENGE_LEVELS[idx];
+
+    // Update Top Bar Info
+    const badgeEl = document.getElementById('levelBadge');
+    badgeEl.textContent = `${lv.tier}・${lv.points}分`;
+    badgeEl.className = lv.tier === '基礎關'
+        ? 'text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800'
+        : lv.tier === '進階關'
+            ? 'text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800'
+            : 'text-xs font-bold px-2 py-0.5 rounded bg-purple-100 text-purple-800';
+
+    document.getElementById('levelTitle').textContent = lv.title;
+    document.getElementById('levelDesc').textContent = `目標：摺紙後只打一次洞，展開須出現如題目所示的 ${lv.targetHoles.length} 個洞（建議最少摺 ${lv.minFolds} 次）。`;
+
+    // Update Prominent Target Card
+    document.getElementById('targetCardTitle').textContent = `${lv.title}（請照此圖示完成作品）`;
+    document.getElementById('targetHoleCountNum').textContent = lv.targetHoles.length;
+    document.getElementById('targetMinFoldsNum').textContent = lv.minFolds;
+    document.getElementById('minFoldAnswerInput').value = '';
+
+    const isDone = state.completedLevels.has(lv.level);
+    const statusTag = document.getElementById('levelStatusTag');
+    statusTag.textContent = isDone ? '✅ 已過關' : '⏳ 挑戰中';
+    statusTag.className = isDone
+        ? 'text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800'
+        : 'text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-800';
+
+    document.getElementById('feedbackBanner').textContent = '請先選擇左側摺痕進行對摺，再點擊中間色紙打洞！';
+    document.getElementById('feedbackBanner').className = 'text-xs font-bold p-2 rounded-lg bg-white border border-indigo-100 text-slate-600';
+
+    renderLevelPills();
+    resetPaperState();
+}
+
+/**
+ * ============================================================================
+ * 5. FOLDING, PUNCHING & SOLUTION ACTIONS
+ * ============================================================================
+ */
+function toggleFoldDirection() {
+    state.foldDirectionSign *= -1;
+    const label = document.getElementById('foldDirLabel');
+    if (state.foldDirectionSign === 1) {
+        label.textContent = '正向 (預設)';
+        label.className = 'text-indigo-600';
+    } else {
+        label.textContent = '反向 (另一側)';
+        label.className = 'text-rose-600';
+    }
+}
+
+function applyCreaseFold(creaseId) {
+    // If in Reverse Part 2 mode, clicking a crease checks the answer!
+    if (state.mode === 'reverse' && state.reverseSubMode === 'ws_part2') {
+        checkWorksheetPart2Crease(creaseId);
+        return;
+    }
+
+    if (state.foldSteps.length >= 6) {
+        updateFeedback('⚠️ 紙張已經摺疊 6 次非常厚囉！可先打洞或退回一步。', 'amber');
+        return;
+    }
+
+    // Test if folding along this crease with current direction leaves non-empty paper
+    const candidateSteps = [...state.foldSteps, { creaseId, dirSign: state.foldDirectionSign }];
+    const candidateLayers = buildFoldedLayers(candidateSteps);
+
+    // Check if the fold actually folded any layer (i.e., the crease intersected or reflected at least one layer)
+    const prevRefCount = state.layers.reduce((acc, l) => acc + l.reflections.length, 0);
+    const newRefCount = candidateLayers.reduce((acc, l) => acc + l.reflections.length, 0);
+
+    if (candidateLayers.length === state.layers.length && newRefCount === prevRefCount) {
+        // Automatically flip sign if current sign didn't fold anything
+        const altSteps = [...state.foldSteps, { creaseId, dirSign: -state.foldDirectionSign }];
+        const altLayers = buildFoldedLayers(altSteps);
+        state.foldSteps = altSteps;
+        state.layers = altLayers;
+    } else {
+        state.foldSteps = candidateSteps;
+        state.layers = candidateLayers;
+    }
+
+    // Clear previous punch when adding a new fold so student punches on the newly folded shape
+    state.punchPt = null;
+    state.unfoldedHoles = [];
+    updateFoldHistoryUI();
+    renderAllCanvases();
+}
+
+function undoLastFold() {
+    if (state.foldSteps.length === 0) return;
+    state.foldSteps.pop();
+    state.layers = buildFoldedLayers(state.foldSteps);
+    state.punchPt = null;
+    state.unfoldedHoles = [];
+    updateFoldHistoryUI();
+    renderAllCanvases();
+}
+
+function flipLastFoldDirection() {
+    if (state.foldSteps.length === 0) return;
+    const lastIdx = state.foldSteps.length - 1;
+    state.foldSteps[lastIdx].dirSign *= -1;
+    state.layers = buildFoldedLayers(state.foldSteps);
+    state.punchPt = null;
+    state.unfoldedHoles = [];
+    updateFoldHistoryUI();
+    renderAllCanvases();
+}
+
+function resetPaperState() {
+    state.foldSteps = [];
+    state.layers = buildFoldedLayers([]);
+    state.punchPt = null;
+    state.hoverPt = null;
+    state.unfoldedHoles = [];
+    updateFoldHistoryUI();
+    renderAllCanvases();
+}
+
+function updateFoldHistoryUI() {
+    const countEl = document.getElementById('foldCountBadge');
+    const listEl = document.getElementById('foldHistoryList');
+    const undoBtn = document.getElementById('undoFoldBtn');
+    const flipBtn = document.getElementById('flipLastFoldBtn');
+    const layerInd = document.getElementById('layerCountIndicator');
+
+    countEl.textContent = state.foldSteps.length;
+    undoBtn.disabled = state.foldSteps.length === 0;
+    if (flipBtn) flipBtn.disabled = state.foldSteps.length === 0;
+    layerInd.textContent = `目前疊合塊數：${state.layers.length} 層`;
+
+    if (state.foldSteps.length === 0) {
+        listEl.innerHTML = '<span>尚未摺紙（平坦正方形色紙，共 1 層）</span>';
+    } else {
+        listEl.innerHTML = state.foldSteps.map((s, idx) => {
+            const c = CREASES[s.creaseId];
+            const badgeColor = c.type === 'axis' ? 'bg-indigo-100 text-indigo-800 border-indigo-300' : 'bg-emerald-100 text-emerald-800 border-emerald-300';
+            const dirArrow = s.dirSign === 1 ? '' : ' (反向)';
+            return `<span class="px-2 py-0.5 rounded-md border font-bold ${badgeColor}">${idx + 1}. ${c.short}${dirArrow}</span>`;
+        }).join('<span class="text-slate-400">➔</span>');
+    }
+
+    document.getElementById('currentHoleCountNum').textContent = state.unfoldedHoles.length;
+}
+
+function showLevelHint() {
+    const lv = CHALLENGE_LEVELS[state.currentLevelIdx];
+    updateFeedback(`💡 提示：${lv.hint}`, 'amber');
+}
+
+function autoSolveCurrentLevel() {
+    const lv = CHALLENGE_LEVELS[state.currentLevelIdx];
+    state.foldSteps = lv.recipeFolds.map(f => ({ ...f }));
+    state.layers = buildFoldedLayers(state.foldSteps);
+    state.punchPt = { ...lv.recipePunch };
+    state.unfoldedHoles = computeUnfoldedHolesFromPunch(state.punchPt, state.layers);
+    document.getElementById('minFoldAnswerInput').value = lv.minFolds;
+
+    updateFoldHistoryUI();
+    renderAllCanvases();
+    verifyChallengeMatch();
+}
+
+function updateFeedback(msg, tone = 'slate') {
+    const el = document.getElementById('feedbackBanner');
+    el.textContent = msg;
+    const styles = {
+        slate: 'text-xs font-bold p-2 rounded-lg bg-white border border-indigo-100 text-slate-600',
+        amber: 'text-xs font-bold p-2 rounded-lg bg-amber-50 border border-amber-300 text-amber-900',
+        emerald: 'text-xs font-bold p-2 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-900',
+        rose: 'text-xs font-bold p-2 rounded-lg bg-rose-50 border border-rose-300 text-rose-800'
+    };
+    el.className = styles[tone] || styles.slate;
+}
+
+/**
+ * Check if current `state.unfoldedHoles` matches the current level's `targetHoles`
+ */
+function verifyChallengeMatch() {
+    if (state.mode !== 'challenge') return;
+    const lv = CHALLENGE_LEVELS[state.currentLevelIdx];
+    const targets = lv.targetHoles;
+    const actual = state.unfoldedHoles;
+    const badge = document.getElementById('matchStatusBadge');
+    document.getElementById('currentHoleCountNum').textContent = actual.length;
+
+    if (actual.length === 0) {
+        badge.textContent = '等待打洞...';
+        badge.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600';
+        return;
+    }
+
+    if (actual.length !== targets.length) {
+        badge.textContent = `洞數不符 (${actual.length} / 目標 ${targets.length} 洞)`;
+        badge.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800';
+        updateFeedback(`目前打出 ${actual.length} 個洞，但本關目標是 ${targets.length} 個洞。試著調整摺紙次數或把洞打在摺線上！`, 'amber');
+        return;
+    }
+
+    // Check geometric proximity between actual and targets (tolerance 0.16 in [-1,1] space)
+    const TOL = 0.16;
+    const used = new Array(targets.length).fill(false);
+    let matchedCount = 0;
+
+    for (const a of actual) {
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < targets.length; i++) {
+            if (used[i]) continue;
+            const d = Math.hypot(a.x - targets[i].x, a.y - targets[i].y);
+            if (d < bestDist) {
+                bestDist = d;
+                bestIdx = i;
+            }
+        }
+        if (bestIdx !== -1 && bestDist <= TOL) {
+            used[bestIdx] = true;
+            matchedCount++;
+        }
+    }
+
+    if (matchedCount === targets.length) {
+        badge.textContent = '🎉 完全吻合目標圖示！';
+        badge.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800';
+        state.completedLevels.add(lv.level);
+
+        const ansInput = document.getElementById('minFoldAnswerInput');
+        if (!ansInput.value) ansInput.value = lv.minFolds;
+
+        renderLevelPills();
+        const statusTag = document.getElementById('levelStatusTag');
+        statusTag.textContent = '✅ 已過關';
+        statusTag.className = 'text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800';
+
+        updateFeedback(`🎉 恭喜過關！${lv.insight}`, 'emerald');
+        openCelebrationModal(lv);
+    } else {
+        badge.textContent = `位置偏差 (吻合 ${matchedCount}/${targets.length} 洞)`;
+        badge.className = 'text-xs font-bold px-2.5 py-1 rounded-lg bg-rose-100 text-rose-800';
+        updateFeedback(`已打出 ${actual.length} 個洞，但孔洞位置與紅色目標圈尚未完全重合，請微調打洞位置或檢查摺線方向！`, 'rose');
+    }
+}
+
+function openCelebrationModal(lv) {
+    document.getElementById('modalTitle').textContent = `${lv.title} 闖關成功！`;
+    document.getElementById('modalSubtitle').textContent = `獲得 +${lv.points} 分！你成功用一次打洞還原了對稱圖形！`;
+    document.getElementById('modalHoleCount').textContent = `${lv.targetHoles.length} 個對稱洞`;
+    document.getElementById('modalFoldCompare').textContent = `你摺了 ${state.foldSteps.length} 次 / 參考最少 ${lv.minFolds} 次`;
+    document.getElementById('modalMathInsight').textContent = `💡 數學重點：${lv.insight}`;
+
+    const modal = document.getElementById('celebrationModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+}
+
+function closeCelebrationModal() {
+    const modal = document.getElementById('celebrationModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+}
+
+function goToNextLevel() {
+    closeCelebrationModal();
+    const nextIdx = (state.currentLevelIdx + 1) % CHALLENGE_LEVELS.length;
+    loadChallengeLevel(nextIdx);
+}
+
+/**
+ * ============================================================================
+ * 6. REVERSE DEDUCTION & WORKSHEET (PART 1 & PART 2) LOGIC
+ * ============================================================================
+ */
+function loadReversePreset(subMode) {
+    state.reverseSubMode = subMode;
+    state.wsIndex = 0;
+    state.userGuessedPoint = null;
+    state.userSelectedCreaseId = null;
+    resetPaperState();
+    renderReverseSubModeUI();
+}
+
+function renderReverseSubModeUI() {
+    const titleEl = document.getElementById('reverseBoxTitle');
+    const subEl = document.getElementById('reverseBoxSubtitle');
+    const btnsEl = document.getElementById('reverseActionBtns');
+    const expEl = document.getElementById('reverseExplanationText');
+
+    if (state.reverseSubMode === 'ws_part1') {
+        const item = WORKSHEET_PART1[state.wsIndex];
+        titleEl.textContent = `📝 ${item.title}`;
+        subEl.textContent = '請直接在右側「色紙展開即時預覽區」點擊你預測的「後洞（對稱點）」位置！';
+
+        btnsEl.innerHTML = WORKSHEET_PART1.map((w, i) => `
+            <button onclick="selectWorksheetItem(${i})" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${i === state.wsIndex ? 'bg-emerald-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                圖${['一','二','三','四'][i]}
+            </button>
+        `).join('');
+
+        expEl.innerHTML = `<strong>題目引導：</strong>${item.question}<br><span class="text-emerald-700 font-bold">💡 核心觀念：虛線是「對稱軸」，原洞與後洞互為「對稱點」，兩洞連線必被虛線垂直平分！</span>`;
+    } else if (state.reverseSubMode === 'ws_part2') {
+        const item = WORKSHEET_PART2[state.wsIndex];
+        titleEl.textContent = `📐 ${item.title}`;
+        subEl.textContent = '請觀察右側展開畫布上的兩個洞，並點擊左側「8條摺痕按鈕」找出正確的摺線！';
+
+        btnsEl.innerHTML = WORKSHEET_PART2.map((w, i) => `
+            <button onclick="selectWorksheetItem(${i})" class="px-2.5 py-1 rounded-lg text-xs font-bold transition ${i === state.wsIndex ? 'bg-emerald-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                圖${['五','六','七','八'][i]}
+            </button>
+        `).join('');
+
+        expEl.innerHTML = `<strong>題目引導：</strong>${item.question}<br><span class="text-emerald-700 font-bold">💡 找摺線秘訣：將兩洞連接成線段，找出該線段的「垂直平分線（中垂線）」就是摺線！</span>`;
+    } else {
+        const lv = CHALLENGE_LEVELS[state.wsIndex % CHALLENGE_LEVELS.length];
+        titleEl.textContent = `🔍 作品反推實驗：從「${lv.title}」展開圖反推如何摺紙打洞`;
+        subEl.textContent = '系統自動分析展開後的孔洞對稱軸與最少摺疊步驟：';
+
+        btnsEl.innerHTML = CHALLENGE_LEVELS.map((l, i) => `
+            <button onclick="selectWorksheetItem(${i})" class="px-2 py-1 rounded-lg text-xs font-bold transition ${i === state.wsIndex ? 'bg-amber-500 text-slate-900' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                第${l.level}關
+            </button>
+        `).join('') + `
+            <button onclick="demonstrateReverseFold()" class="px-3 py-1 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow">
+                ▶ 執行反推摺法並驗證
+            </button>
+        `;
+
+        const stepNames = lv.recipeFolds.map((f, idx) => `第${idx + 1}步：摺「${CREASES[f.creaseId].name}」`).join(' ➔ ');
+        expEl.innerHTML = `
+            <div class="space-y-1">
+                <div><strong>1. 孔洞數量分析：</strong>展開共有 <strong>${lv.targetHoles.length} 個洞</strong>（${lv.targetHoles.length % 2 === 1 ? '奇數個洞代表打洞位置必跨在摺線上！' : `最少需疊合 ${lv.targetHoles.length} 層或利用摺線合成`}）。</div>
+                <div><strong>2. 反推摺線步驟（最少摺 ${lv.minFolds} 次）：</strong><span class="text-indigo-700 font-bold">${stepNames}</span></div>
+                <div><strong>3. 反推打洞座標：</strong>在摺好的色紙座標 <code>(${lv.recipePunch.x.toFixed(2)}, ${lv.recipePunch.y.toFixed(2)})</code> 打一次洞即可完成作品！點擊上方「▶ 執行反推摺法並驗證」可立即模擬。</div>
+            </div>
+        `;
+    }
+    renderAllCanvases();
+}
+
+function selectWorksheetItem(idx) {
+    state.wsIndex = idx;
+    state.userGuessedPoint = null;
+    state.userSelectedCreaseId = null;
+    resetPaperState();
+    renderReverseSubModeUI();
+}
+
+function demonstrateReverseFold() {
+    const lv = CHALLENGE_LEVELS[state.wsIndex % CHALLENGE_LEVELS.length];
+    state.foldSteps = lv.recipeFolds.map(f => ({ ...f }));
+    state.layers = buildFoldedLayers(state.foldSteps);
+    state.punchPt = { ...lv.recipePunch };
+    state.unfoldedHoles = computeUnfoldedHolesFromPunch(state.punchPt, state.layers);
+    updateFoldHistoryUI();
+    renderAllCanvases();
+}
+
+function checkWorksheetPart2Crease(creaseId) {
+    const item = WORKSHEET_PART2[state.wsIndex];
+    state.userSelectedCreaseId = creaseId;
+    const expEl = document.getElementById('reverseExplanationText');
+    if (creaseId === item.creaseId) {
+        expEl.innerHTML = `🎉 <strong>答對了！</strong>正確摺線就是「<strong>${CREASES[creaseId].name}</strong>」！請看右側預覽圖，這條摺線剛好<strong>垂直且平分</strong>兩個洞的連線段！`;
+    } else {
+        expEl.innerHTML = `🤔 你選擇了「${CREASES[creaseId].name}」，但沿這條線對摺時兩洞不會重合喔！請觀察兩洞連線的中點與垂直方向，再試一次！`;
+    }
+    renderAllCanvases();
+}
+
+/**
+ * ============================================================================
+ * 7. CANVAS INTERACTION & SMART SNAPPING
+ * ============================================================================
+ */
+function setupCanvasListeners() {
+    const foldedCanvas = document.getElementById('foldedCanvas');
+    const unfoldedCanvas = document.getElementById('unfoldedCanvas');
+
+    function getNormCoords(canvas, evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        const px = (clientX - rect.left) / rect.width;
+        const py = (clientY - rect.top) / rect.height;
+        // Padding inside canvas is 10% on each side -> paper spans [0.1, 0.9]
+        const nx = (px - 0.5) / 0.4;
+        const ny = (py - 0.5) / 0.4;
+        return { x: nx, y: ny };
+    }
+
+    function applySmartSnap(pt) {
+        const snapEnabled = document.getElementById('chkSnapToGrid').checked;
+        if (!snapEnabled) return pt;
+
+        let x = pt.x, y = pt.y;
+
+        // If in Challenge mode, gently snap toward the current level's recipe punch if close (helps students hit exact octagon / crease points)
+        if (state.mode === 'challenge') {
+            const lv = CHALLENGE_LEVELS[state.currentLevelIdx];
+            if (Math.hypot(x - lv.recipePunch.x, y - lv.recipePunch.y) < 0.09) {
+                return { x: lv.recipePunch.x, y: lv.recipePunch.y };
+            }
+        }
+
+        // Snap to any of the 8 crease lines if very close (for punching right on a crease!)
+        for (const key of Object.keys(CREASES)) {
+            const line = CREASES[key];
+            const d = pointToLineDist({ x, y }, line);
+            if (d < 0.045) {
+                // Project onto line
+                const factor = evalLine({ x, y }, line) / (line.a * line.a + line.b * line.b);
+                x = x - line.a * factor;
+                y = y - line.b * factor;
+            }
+        }
+        return { x: Math.max(-0.98, Math.min(0.98, x)), y: Math.max(-0.98, Math.min(0.98, y)) };
+    }
+
+    foldedCanvas.addEventListener('pointermove', (e) => {
+        const raw = getNormCoords(foldedCanvas, e);
+        if (Math.abs(raw.x) <= 1.08 && Math.abs(raw.y) <= 1.08) {
+            state.hoverPt = applySmartSnap(raw);
+        } else {
+            state.hoverPt = null;
+        }
+        renderAllCanvases();
+    });
+
+    foldedCanvas.addEventListener('pointerleave', () => {
+        state.hoverPt = null;
+        renderAllCanvases();
+    });
+
+    foldedCanvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        const raw = getNormCoords(foldedCanvas, e);
+        if (Math.abs(raw.x) > 1.05 || Math.abs(raw.y) > 1.05) return;
+
+        const snapped = applySmartSnap(raw);
+        // Check if snapped point hits at least one folded paper layer
+        const hitsPaper = state.layers.some(l => isPointInOrNearPolygon(snapped, l.poly, 0.035));
+        if (!hitsPaper) {
+            updateFeedback('⚠️ 你點擊的位置目前沒有色紙覆蓋喔！請點擊黃色色紙區域進行打洞。', 'amber');
+            return;
+        }
+
+        state.punchPt = snapped;
+        state.unfoldedHoles = computeUnfoldedHolesFromPunch(state.punchPt, state.layers);
+        updateFoldHistoryUI();
+        renderAllCanvases();
+        verifyChallengeMatch();
+    });
+
+    // Unfolded canvas interaction for Worksheet Part 1 (clicking where the reflected hole is)
+    unfoldedCanvas.addEventListener('pointerdown', (e) => {
+        if (state.mode !== 'reverse' || state.reverseSubMode !== 'ws_part1') return;
+        e.preventDefault();
+        const pt = getNormCoords(unfoldedCanvas, e);
+        if (Math.abs(pt.x) > 1.02 || Math.abs(pt.y) > 1.02) return;
+
+        const item = WORKSHEET_PART1[state.wsIndex];
+        const expected = reflectPoint(item.origHole, CREASES[item.creaseId]);
+        state.userGuessedPoint = pt;
+
+        const expEl = document.getElementById('reverseExplanationText');
+        if (Math.hypot(pt.x - expected.x, pt.y - expected.y) < 0.16) {
+            state.userGuessedPoint = expected;
+            expEl.innerHTML = `🎉 <strong>完全正確！</strong>後洞就位於 <code>(${expected.x.toFixed(2)}, ${expected.y.toFixed(2)})</code>！注意看原洞與後洞的連線，是不是剛好與虛線（對稱軸）<strong>互相垂直且被平分</strong>！`;
+        } else {
+            expEl.innerHTML = `🤔 位置還差一點點喔！請想像把色紙沿著藍色虛線對摺，原洞會落在對面的哪個對稱位置？再點一次試試看！`;
+        }
+        renderAllCanvases();
+    });
+}
+
+/**
+ * ============================================================================
+ * 8. CANVAS RENDERING ENGINE (TARGET CARD, FOLDED WORKSPACE, UNFOLDED PREVIEW)
+ * ============================================================================
+ */
+function toCanvasXY(pt, size) {
+    const half = size * 0.5;
+    const scale = size * 0.4; // Paper spans 80% of canvas width/height
+    return {
+        x: half + pt.x * scale,
+        y: half + pt.y * scale
+    };
+}
+
+function renderAllCanvases() {
+    renderTargetCardCanvas();
+    renderFoldedWorkspaceCanvas();
+    renderUnfoldedPreviewCanvas();
+}
+
+/**
+ * Render the Dedicated Target Pattern Canvas in Challenge Mode
+ */
+function renderTargetCardCanvas() {
+    const canvas = document.getElementById('targetCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    ctx.clearRect(0, 0, W, W);
+
+    // Draw background grid
+    ctx.fillStyle = '#fffbeb';
+    ctx.fillRect(0, 0, W, W);
+
+    const tl = toCanvasXY({ x: -1, y: -1 }, W);
+    const br = toCanvasXY({ x: 1, y: 1 }, W);
+    const sqSize = br.x - tl.x;
+
+    // Draw Yellow Origami Paper Square
+    ctx.fillStyle = '#fde047';
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 2.5;
+    ctx.fillRect(tl.x, tl.y, sqSize, sqSize);
+    ctx.strokeRect(tl.x, tl.y, sqSize, sqSize);
+
+    // Subtle center reference cross on target card so student can judge positions clearly
+    ctx.strokeStyle = 'rgba(180, 83, 9, 0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    const cTop = toCanvasXY({ x: 0, y: -1 }, W);
+    const cBot = toCanvasXY({ x: 0, y: 1 }, W);
+    const cLeft = toCanvasXY({ x: -1, y: 0 }, W);
+    const cRight = toCanvasXY({ x: 1, y: 0 }, W);
+    ctx.beginPath();
+    ctx.moveTo(cTop.x, cTop.y); ctx.lineTo(cBot.x, cBot.y);
+    ctx.moveTo(cLeft.x, cLeft.y); ctx.lineTo(cRight.x, cRight.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw Target Holes prominently
+    const lv = CHALLENGE_LEVELS[state.currentLevelIdx];
+    for (const h of lv.targetHoles) {
+        const p = toCanvasXY(h, W);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, W * 0.036, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#1e293b';
+        ctx.stroke();
+    }
+}
+
+/**
+ * Render Left Canvas: Folded Paper Layers, 8 Crease Guides, and Active Punch
+ */
+function renderFoldedWorkspaceCanvas() {
+    const canvas = document.getElementById('foldedCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    ctx.clearRect(0, 0, W, W);
+
+    // Base Square Outline (Original Unfolded Boundary)
+    const tl = toCanvasXY({ x: -1, y: -1 }, W);
+    const br = toCanvasXY({ x: 1, y: 1 }, W);
+    const sqW = br.x - tl.x;
+
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.strokeRect(tl.x, tl.y, sqW, sqW);
+    ctx.setLineDash([]);
+
+    // Draw all 8 Crease Guide Lines faintly in the background
+    Object.values(CREASES).forEach(line => {
+        const p1 = toCanvasXY(line.p1, W);
+        const p2 = toCanvasXY(line.p2, W);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = line.type === 'axis' ? 'rgba(99, 102, 241, 0.22)' : 'rgba(16, 185, 129, 0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // Draw Each Folded Paper Layer Polygon
+    state.layers.forEach((layer, idx) => {
+        if (layer.poly.length < 3) return;
+        ctx.beginPath();
+        const first = toCanvasXY(layer.poly[0], W);
+        ctx.moveTo(first.x, first.y);
+        for (let i = 1; i < layer.poly.length; i++) {
+            const pt = toCanvasXY(layer.poly[i], W);
+            ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.closePath();
+
+        // Layer color: top side yellow, reflected side slightly warmer amber/gold with alpha stacking
+        const isFlipped = layer.reflections.length % 2 === 1;
+        ctx.fillStyle = isFlipped ? 'rgba(251, 191, 36, 0.55)' : 'rgba(254, 240, 138, 0.65)';
+        ctx.fill();
+
+        ctx.strokeStyle = '#d97706';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    });
+
+    // Draw Crease Lines Clipped on Top of the Folded Paper
+    Object.values(CREASES).forEach(line => {
+        const p1 = toCanvasXY(line.p1, W);
+        const p2 = toCanvasXY(line.p2, W);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = line.type === 'axis' ? 'rgba(79, 70, 229, 0.55)' : 'rgba(5, 150, 105, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // Highlight active fold lines from foldSteps
+    state.foldSteps.forEach((step, idx) => {
+        const line = CREASES[step.creaseId];
+        const p1 = toCanvasXY(line.p1, W);
+        const p2 = toCanvasXY(line.p2, W);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = '#dc2626';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+    });
+
+    // Draw Hover Preview Punch Cursor
+    const activePunch = state.punchPt || state.hoverPt;
+    if (state.hoverPt) {
+        const hp = toCanvasXY(state.hoverPt, W);
+        ctx.beginPath();
+        ctx.arc(hp.x, hp.y, W * 0.032, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.35)';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ef4444';
+        ctx.stroke();
+    }
+
+    // Draw Committed Punch Hole on Folded Paper
+    if (state.punchPt) {
+        const pp = toCanvasXY(state.punchPt, W);
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, W * 0.033, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+    }
+}
+
+/**
+ * Render Right Canvas: Real-time Unfolded Paper, Crease Lines, Target Overlay, and Symmetry Lines
+ */
+function renderUnfoldedPreviewCanvas() {
+    const canvas = document.getElementById('unfoldedCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width;
+    ctx.clearRect(0, 0, W, W);
+
+    const tl = toCanvasXY({ x: -1, y: -1 }, W);
+    const br = toCanvasXY({ x: 1, y: 1 }, W);
+    const sqW = br.x - tl.x;
+
+    // Draw Full Unfolded Yellow Paper
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(tl.x, tl.y, sqW, sqW);
+    ctx.strokeStyle = '#ca8a04';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(tl.x, tl.y, sqW, sqW);
+
+    // Draw Crease Lines made during folding
+    state.foldSteps.forEach(step => {
+        const line = CREASES[step.creaseId];
+        const p1 = toCanvasXY(line.p1, W);
+        const p2 = toCanvasXY(line.p2, W);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = line.type === 'axis' ? '#4f46e5' : '#059669';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.stroke();
+    });
+    ctx.setLineDash([]);
+
+    // In Challenge Mode (or Reverse Custom Deduce): Draw Target Guide Rings if enabled
+    const showTarget = document.getElementById('chkShowTargetOverlay').checked;
+    if (showTarget && (state.mode === 'challenge' || (state.mode === 'reverse' && state.reverseSubMode === 'custom_deduce'))) {
+        const lvIdx = state.mode === 'challenge' ? state.currentLevelIdx : (state.wsIndex % CHALLENGE_LEVELS.length);
+        const targets = CHALLENGE_LEVELS[lvIdx].targetHoles;
+        for (const t of targets) {
+            const tp = toCanvasXY(t, W);
+            ctx.beginPath();
+            ctx.arc(tp.x, tp.y, W * 0.036, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.16)';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.strokeStyle = '#e11d48';
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+    }
+
+    // Special rendering for Reverse Mode Worksheet Part 1 & Part 2
+    if (state.mode === 'reverse' && state.reverseSubMode === 'ws_part1') {
+        const item = WORKSHEET_PART1[state.wsIndex];
+        const line = CREASES[item.creaseId];
+        const p1 = toCanvasXY(line.p1, W);
+        const p2 = toCanvasXY(line.p2, W);
+
+        // Draw fold axis
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 5]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw Original Hole
+        const origP = toCanvasXY(item.origHole, W);
+        ctx.beginPath();
+        ctx.arc(origP.x, origP.y, W * 0.035, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+
+        // Draw User Guessed Hole if any
+        if (state.userGuessedPoint) {
+            const gp = toCanvasXY(state.userGuessedPoint, W);
+            ctx.beginPath();
+            ctx.moveTo(origP.x, origP.y);
+            ctx.lineTo(gp.x, gp.y);
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.beginPath();
+            ctx.arc(gp.x, gp.y, W * 0.035, 0, Math.PI * 2);
+            ctx.fillStyle = '#10b981';
+            ctx.fill();
+            ctx.strokeStyle = '#065f46';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        return;
+    }
+
+    if (state.mode === 'reverse' && state.reverseSubMode === 'ws_part2') {
+        const item = WORKSHEET_PART2[state.wsIndex];
+        const pA = toCanvasXY(item.holeA, W);
+        const pB = toCanvasXY(item.holeB, W);
+
+        // Connect the two holes with a dashed line segment (Q5 of worksheet)
+        ctx.beginPath();
+        ctx.moveTo(pA.x, pA.y);
+        ctx.lineTo(pB.x, pB.y);
+        ctx.strokeStyle = 'rgba(225, 29, 72, 0.65)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw both holes
+        [pA, pB].forEach(p => {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, W * 0.035, 0, Math.PI * 2);
+            ctx.fillStyle = '#0f172a';
+            ctx.fill();
+        });
+
+        // Draw user's selected candidate crease line
+        if (state.userSelectedCreaseId) {
+            const line = CREASES[state.userSelectedCreaseId];
+            const lp1 = toCanvasXY(line.p1, W);
+            const lp2 = toCanvasXY(line.p2, W);
+            ctx.beginPath();
+            ctx.moveTo(lp1.x, lp1.y);
+            ctx.lineTo(lp2.x, lp2.y);
+            ctx.strokeStyle = state.userSelectedCreaseId === item.creaseId ? '#10b981' : '#ef4444';
+            ctx.lineWidth = 3.5;
+            ctx.stroke();
+        }
+        return;
+    }
+
+    // Determine holes to preview (committed punch or live hover preview!)
+    const previewHoles = state.punchPt
+        ? state.unfoldedHoles
+        : (state.hoverPt ? computeUnfoldedHolesFromPunch(state.hoverPt, state.layers) : []);
+
+    // Draw Symmetry Connection Lines if enabled
+    const showSym = document.getElementById('chkShowSymmetryLines').checked;
+    if (showSym && previewHoles.length >= 2 && state.foldSteps.length > 0) {
+        const firstCrease = CREASES[state.foldSteps[0].creaseId];
+        ctx.strokeStyle = 'rgba(79, 70, 229, 0.35)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        for (const h of previewHoles) {
+            const ref = reflectPoint(h, firstCrease);
+            const match = previewHoles.find(other => Math.hypot(other.x - ref.x, other.y - ref.y) < 0.08);
+            if (match) {
+                const p1 = toCanvasXY(h, W);
+                const p2 = toCanvasXY(match, W);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+            }
+        }
+        ctx.setLineDash([]);
+    }
+
+    // Draw Unfolded Holes
+    const isHoverOnly = !state.punchPt && !!state.hoverPt;
+    for (const h of previewHoles) {
+        const p = toCanvasXY(h, W);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, W * 0.033, 0, Math.PI * 2);
+        ctx.fillStyle = isHoverOnly ? 'rgba(15, 23, 42, 0.45)' : '#0f172a';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+    }
+}
+
+window.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
